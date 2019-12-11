@@ -1,5 +1,5 @@
-abr : main.o bst.o queue.o stack.o
-	gcc main.o bst.o queue.o stack.o -o abr 
+bst : main.o bst.o queue.o stack.o
+	gcc main.o bst.o queue.o stack.o -o bst 
 
 stack.o: stack.c stack.h
 	gcc -c -O1 stack.c
