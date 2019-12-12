@@ -59,8 +59,11 @@ NodePtr insert(NodePtr root, int value){
 int type_of_violation_on_insert_left(NodePtr root){
     int violation = 0;
     if(root->right && root->right->color == RED)
-        if(root->left && root->left->color == RED) 
-            violation = 1;
+        if(root->left && root->left->color == RED)
+            if(root->left->left && root->left->left->color == RED) 
+                violation = 1;
+            else if(root->left->right && root->left->right->color == RED) 
+                violation = 1;
     else{
         if(root->left && root->left->color == RED){
             if(root->left->right && root->left->right->color == RED) violation = 2;
@@ -74,7 +77,10 @@ int type_of_violation_on_insert_right(NodePtr root){
     int violation = 0;
     if(root->left && root->left->color == RED)
         if(root->right && root->right->color == RED)
-            violation = 1;
+            if(root->right->right && root->right->right->color == RED)
+                violation = 1;
+            else if(root->right->left && root->right->left->color == RED)
+                violation = 1;
     else{
         if(root->right && root->right->color == RED){
             if(root->right->left && root->right->left->color == RED) violation = 2;
