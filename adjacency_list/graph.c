@@ -22,9 +22,38 @@ AdjNode* make_list_node(int adj){
 }
 
 AdjList insert(AdjList list, int adj){
-    AdjNode* newnode = make_list_node(adj);
-    newnode->next = list.head;
-    list.head = newnode;
+    // AdjNode* newnode = make_list_node(adj);
+    // newnode->next = list.head;
+    // list.head = newnode;
+    // return list;
+    AdjNode* curr = list.head;
+    AdjNode* prev = NULL;
+    while(curr && curr->value > adj){
+        prev = curr;
+        curr = curr->next;
+    }
+    if(!prev){
+        if(curr && curr->value > adj){
+            AdjNode* newnode = make_list_node(adj);
+            newnode->next = list.head;
+            list.head = newnode;
+        }else if(curr && curr->value < adj){//i do this to avoid the duplicates into the list
+            AdjNode* newnode = make_list_node(adj);
+            newnode->next = list.head->next;
+            list.head->next = newnode;
+        }else if(!curr){// if the list is empty
+            list.head = make_list_node(adj);
+        }//else the value is already present into the list
+    }else if(prev && curr){//insert into the middle of the list
+        if(curr->value != adj){//if the value is different from
+            AdjNode* newnode = make_list_node(adj);
+            newnode->next = curr;
+            prev->next = newnode;
+        }//else the value is already present into the list
+    }else{// insert in tail
+        AdjNode* newnode = make_list_node(adj);
+        prev->next = newnode;
+    }
     return list;
 }
 
@@ -134,4 +163,84 @@ Graph makegraph_from_file(char* filename){
     }
     fclose(fp);
     return g;
+}
+
+void dfs_visit(Graph g, int starting_point, int* color, int* prev, int* t_discover, int* t_end_visit, int* time, edge_info* info){
+    color[starting_point] = GREY;
+    *time += 1;
+    t_discover[starting_point] =  *time;
+    AdjNode* iter = g.entries[starting_point].head;
+    while(iter){
+        if(color[iter->value] == WHITE){
+            prev[iter->value] = starting_point;
+            dfs_visit(g, iter->value, color, prev, t_discover, t_end_visit, time, info);
+        }
+        else if(color[iter->value] == GREY)
+            info->backward_edge[iter->value] = starting_point;
+        else{
+            if(t_end_visit[iter->value] < t_discover[starting_point])
+                info->transition_edge[iter->value] = starting_point;
+            else
+                info->forward_edge[iter->value] = starting_point;
+        }
+        iter = iter->next;
+    }
+    *time += 1;
+    t_end_visit[starting_point] = *time;
+    color[starting_point] = BLACK;
+    return;
+}
+
+void dfs(Graph g){
+    int time = 0;
+    edge_info info; 
+    initialize_edge_info(g, &info);
+    int* color = (int*) calloc(g.num_vertex, sizeof(int));
+    if(!color)error("error in function dfs");
+    int* prev = (int*)calloc(g.num_vertex, sizeof(int)); 
+    if(!prev)error("error in function dfs");
+    int* t_discover = (int*)calloc(g.num_vertex, sizeof(int));
+    if(!t_discover)error("error in function dfs");
+    int*t_end_visit = (int*)calloc(g.num_vertex, sizeof(int));
+    if(!t_end_visit)error("error in function dfs");
+    for(int i=0; i<g.num_vertex; i++){
+        prev[i] = inf;
+        t_discover[i] = t_end_visit[i] = inf;
+    }    
+    ////////// TEST /////////////////
+    // dfs_visit(g, 0, color, prev, t_discover, t_end_visit, &time);
+    // for(int i=0; i<g.num_vertex; i++){
+    //     printf("color[%d]: %12d, prev[%d]: %12d, t_discover[%d]: %12d, t_end_visit[%d]: %12d\n", i, color[i], i, prev[i], i, t_discover[i], i, t_end_visit[i]);
+    // }
+    /////////////////////////////////
+
+    for(int i=0; i<g.num_vertex; i++)
+        dfs_visit(g, 1, color, prev, t_discover, t_end_visit, &time, &info);
+
+    for(int i=0; i<g.num_vertex; i++){
+        printf("forward[%d] = %12d, backward[%d] = %12d, transition[%d] = %12d\n", i,  info.forward_edge[i], i, info.backward_edge[i], i, info.transition_edge[i]);
+    }
+
+    free(info.backward_edge);
+    free(info.forward_edge);
+    free(info.transition_edge);
+    free(color);
+    free(prev);
+    free(t_discover);
+    free(t_end_visit);
+    return;
+}
+
+void initialize_edge_info(Graph g, edge_info* info){
+    info->backward_edge = (int*) calloc(g.num_vertex, sizeof(int));
+    info->forward_edge = (int*) calloc(g.num_vertex, sizeof(int));
+    info->transition_edge = (int*) calloc(g.num_vertex, sizeof(int));
+    if(!(info->backward_edge && info->forward_edge && info->transition_edge))
+        error("error in function initialize_edge_info");
+    for(int i=0; i<g.num_vertex; i++){
+        info->backward_edge[i] = inf;
+        info->forward_edge[i] = inf;
+        info->transition_edge[i] = inf;
+    }
+    return;
 }
