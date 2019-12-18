@@ -46,5 +46,19 @@
     void dfs_visit(Graph g, int starting_point, int* color, int* prev, int* t_discover, int* t_end_visit, int* time, edge_info* info);
     void dfs(Graph g);
     void initialize_edge_info(Graph g,edge_info* info);
+    
+    //////////////////////////////////////////
+    
+    typedef struct list_node{
+        struct list_node* next;
+        int value;
+    }list_node;
+
+    list_node* make_node_ot(int value);
+    list_node* insert_node(list_node* head, int value);
+    list_node* drop_ot(list_node* head);
+    list_node* print_ot(list_node* head);
+    void topologic_ordering(Graph g);
+    list_node* ot_dfs(Graph g, int starting_point, list_node* node, int* color, int* flag);
 
 #endif

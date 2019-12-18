@@ -23,6 +23,9 @@ int main(int argc, char** argv){
     printf("insert destination: ");
     scanf("%d", &dest);
     print_min_path(g, src, dest);
+    dfs(g);
+    printf("search of the ot:\n");
+    topologic_ordering(g);
     g = drop(g);
     return 0;
 }

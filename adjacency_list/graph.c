@@ -214,8 +214,9 @@ void dfs(Graph g){
     // }
     /////////////////////////////////
 
+    
     for(int i=0; i<g.num_vertex; i++)
-        dfs_visit(g, 1, color, prev, t_discover, t_end_visit, &time, &info);
+        dfs_visit(g, i, color, prev, t_discover, t_end_visit, &time, &info);
 
     for(int i=0; i<g.num_vertex; i++){
         printf("forward[%d] = %12d, backward[%d] = %12d, transition[%d] = %12d\n", i,  info.forward_edge[i], i, info.backward_edge[i], i, info.transition_edge[i]);
@@ -243,4 +244,72 @@ void initialize_edge_info(Graph g, edge_info* info){
         info->transition_edge[i] = inf;
     }
     return;
+}
+
+list_node* make_node_ot(int value){
+    list_node* newnode = (list_node*) malloc(sizeof(list_node));
+    if(!newnode) error("error in function make_node_ot");
+    newnode->next = NULL;
+    newnode->value = value;
+    return newnode;
+}
+
+list_node* insert_node(list_node* head, int value){
+    list_node* newnode = make_node_ot(value);
+    newnode->next = head;
+    return newnode;
+}   
+
+list_node* drop_ot(list_node* head){
+    list_node* tmp;
+    while(head){
+        tmp = head;
+        head = head->next;
+        free(tmp);
+    }
+    return NULL;
+}
+
+list_node* print_ot(list_node* head){
+    list_node* iter = head;
+    while(iter){
+        printf("%d\t", iter->value);
+        iter = iter->next;
+    }
+    puts("");
+}
+
+
+void topologic_ordering(Graph g){
+    int flag = 1;
+    int* color = (int*) calloc(g.num_vertex, sizeof(int));
+    if(!color) error("error in function topologic error");
+    list_node* head = NULL;
+    for(int i=0; i<g.num_vertex; i++){
+        if(color[i] == WHITE) head = ot_dfs(g, i, head, color, &flag);
+        if(!flag) break;
+    }
+    if(flag) print_ot(head);
+    else printf("there are not TO on the graph\n");
+    head = drop_ot(head);
+    free(color);
+    return;
+}
+
+list_node* ot_dfs(Graph g, int starting_point, list_node* node, int* color, int* flag){
+    color[starting_point] = GREY;
+    AdjNode* iter = g.entries[starting_point].head;
+    while(iter){
+        if(!flag) return NULL;
+        if(color[iter->value] == WHITE){
+            node = ot_dfs(g, iter->value, node, color, flag);
+        }else if(color[iter->value] == GREY){
+            flag = 0;
+            return NULL;
+        }
+        iter = iter->next;
+    }
+    node = insert_node(node, starting_point);
+    color[starting_point] = BLACK;
+    return node;
 }
