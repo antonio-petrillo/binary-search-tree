@@ -249,20 +249,22 @@ NodePtr delete_node(NodePtr root, int key){
         }else if(root->value < key){
             root->right = delete_node(root->right, key);
             root = right_delete_balance(root);
-        }else if(!root->left){//there are no node on the left
-            tmp = root;
-            root = root->right;
-            if(tmp->color == BLACK) root = propagate_black(root);
-            free(tmp);
-        }else if(!root->right){//there are no node on the right
-            tmp = root;
-            root = root->left;
-            if(tmp->color == BLACK) root = propagate_black(root);
-            free(tmp);
-        }else{//there are two subtree, (so' cazzi)
-            tmp = minimum_disconnection(root->right, root);
-            root->value = tmp->value;
-            root = right_delete_balance(root);
+        }else{//value found
+            if(!root->left){//there are no node on the left
+                tmp = root;
+                root = root->right;
+                if(tmp->color == BLACK) root = propagate_black(root);
+                free(tmp);
+            }else if(!root->right){//there are no node on the right
+                tmp = root;
+                root = root->left;
+                if(tmp->color == BLACK) root = propagate_black(root);
+                free(tmp);
+            }else{//there are two subtree, (so' cazzi)
+                tmp = minimum_disconnection(root->right, root);
+                root->value = tmp->value;
+                root = right_delete_balance(root);
+            }
         }
     }
     return root;
