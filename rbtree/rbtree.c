@@ -97,14 +97,14 @@ void breadthRbVisit(rbTree tree){
     rbNodePtr iter = NULL;
     while(q.head){
         iter = dequeue(&q);
-        printf("node's value: %d, node's color: %s\n", iter->value, (iter->color == RED) ? "RED" : "BLACK");
+        printf("node's value: %d, node's color: %s\n", iter->value, (iter->color == RED) ? "RED" : ((iter->color == DOUBLE_BLACK) ? "DOUBLE BLACK" : "BLACK"));
         if(iter->left){
             enqueue(&q, iter->left);
-            printf("(%d) left's child -> (%d)\n", iter->value, iter->left->value);
+            //printf("(%d) left's child -> (%d)\n", iter->value, iter->left->value);
         } 
         if(iter->right){
             enqueue(&q, iter->right);
-            printf("(%d) right's child -> (%d)\n", iter->value, iter->right->value);
+            //printf("(%d) right's child -> (%d)\n", iter->value, iter->right->value);
         }   
      }
     return;
@@ -259,7 +259,57 @@ rbNodePtr rightRotateRb(rbNodePtr root){
 }
 
 rbTree deleteRbNode(rbTree tree, int key){
-    tree = deleteRbNode_helper(tree, key);
+    int select = -1;
+    if(tree){
+        if(tree->value > key){
+            tree->left = deleteRbNode_helper(tree->left, key);
+            tree = deleteRbFixupLeft(tree);
+            select = 0;
+        }else if(tree->value < key){
+            tree->right = deleteRbNode_helper(tree->right, key);
+            tree = deleteRbFixupRight(tree);
+            select = 1;
+        }else{
+            if(!(tree->left && tree->right)){ // one child or no child
+                rbNodePtr tmp = tree;
+                if(tree->left){
+                    tree = tree->left;
+                    select = 0;
+                } 
+                else {
+                    tree = tree->right;
+                    select = 1;
+                }
+                if(tree){// at least one child
+                    if(tmp->color == RED || tree->color == RED)//the child XOR parent are RED
+                        tree->color = BLACK;
+                    else// both child and parent are BLACK
+                        tree->color = DOUBLE_BLACK;
+                }else{
+                    if(tmp->color == BLACK){
+                        if(tmp->parent)
+                            tmp->parent->color = DOUBLE_BLACK;
+                    }
+                }
+                free(tmp);
+            }else{
+                rbNodePtr min = minRb(tree->right);
+                tree->value = min->value;
+                tree->right = deleteRbNode_helper(tree->right, min->value);
+                tree = deleteRbFixupRight(tree);
+                select = 1;
+            }
+        }
+    }
+    /* else 
+    *    node not present into the tree
+    *    return with no violation
+    */
+    if(select == 0){
+        tree = deleteRbRootFixupLeft(tree);
+    }else if(select == 1){
+        tree =  deleteRbRootFixupRight(tree);
+    }
     if(tree) tree->color = BLACK;
     return tree;
 }
@@ -275,11 +325,14 @@ rbNodePtr deleteRbNode_helper(rbNodePtr root, int key){
         }else{
             if(!(root->left && root->right)){ // one child or no child
                 rbNodePtr tmp = root;
-                if(root->left) root = root->left;
-                else root = root->right;
+                if(root->left)
+                    root = root->left;
+                else
+                    root = root->right;
                 if(root){// at least one child
+                    root->parent = tmp->parent;
                     if(tmp->color == RED || root->color == RED)//the child XOR parent are RED
-                        root->color = RED;
+                        root->color = BLACK;
                     else// both child and parent are BLACK
                         root->color = DOUBLE_BLACK;
                 }else{//no child
@@ -304,6 +357,231 @@ rbNodePtr deleteRbNode_helper(rbNodePtr root, int key){
     *    return with no violation
     */
    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft(rbNodePtr root){
+    switch (typeOfDeleteRootFixupLeft(root)){
+    case 1:
+        root = deleteRbRootFixupLeft1(root);
+        break;
+    case 2:
+        root = deleteRbRootFixupLeft2(root);
+        break;
+    case 3:
+        root = deleteRbRootFixupLeft3(root);
+        break;
+    case 4:
+        root = deleteRbRootFixupLeft4(root);
+        break;
+    case 5:
+        root = deleteRbRootFixupLeft5(root);
+        break;
+    case 6:
+        root = deleteRbRootFixupLeft6(root);
+        break;
+    case 7:
+        root = deleteRbRootFixupLeft7(root);
+        break;
+    default:
+        // 0 no vioaltion
+        break;
+    }
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight(rbNodePtr root){
+    switch (typeOfDeleteRootFixupRight(root)){
+    case 1:
+        root = deleteRbRootFixupRight1(root);
+        break;
+    case 2:
+        root = deleteRbRootFixupRight2(root);
+        break;
+    case 3:
+        root = deleteRbRootFixupRight3(root);
+        break;
+    case 4:
+        root = deleteRbRootFixupRight4(root);
+        break;
+    case 5:
+        root = deleteRbRootFixupRight5(root);
+        break;
+    case 6:
+        root = deleteRbRootFixupRight6(root);
+        break;
+    case 7:
+        root = deleteRbRootFixupRight7(root);
+        break;
+    default:
+        // 0 no vioaltion
+        break;
+    }
+    return root;
+}
+
+
+int typeOfDeleteRootFixupLeft(rbNodePtr root){
+    int violation = 0;
+    if(root){
+        if(root->color == DOUBLE_BLACK){
+            if(root->right && root->right->color == BLACK){
+                violation = 1;
+                if(root->right->left && root->right->left->color == RED) violation = 2;
+                else if(root->right->right && root->right->right->color == RED) violation = 3;
+            }else if(root->right && root->right->color == RED){
+                if(root->right->right && root->right->right->color == BLACK){
+                    if(root->right->left && root->right->left->color == BLACK){
+                        violation = 4;
+                        if((root->right->left->left && root->right->left->left->color == RED) && (!(root->right->left->right)))
+                            violation = 5;
+                        else if((root->right->left->right && root->right->left->right->color == RED) && (!(root->right->left->left)))
+                            violation = 6;
+                        else if((root->right->left->left && root->right->left->left->color == RED) && (root->right->left->right && root->right->left->right->color == RED))
+                            violation = 7;
+                    }
+                }
+            }
+        }
+    }
+    return violation;
+}
+
+rbNodePtr deleteRbRootFixupLeft1(rbNodePtr root){
+    root->right->color == RED;
+    root->color == BLACK;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft2(rbNodePtr root){
+    root->right = leftRotateRb(root->right);
+    root->right->color = BLACK;
+    root->right->right->color = RED;
+    root = deleteRbRootFixupLeft3(root);
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft3(rbNodePtr root){
+    root = rightRotateRb(root);
+    root->left->color = BLACK;
+    root->color = BLACK;
+    root->right->color = BLACK;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft4(rbNodePtr root){
+    root = rightRotateRb(root);
+    root->color = BLACK;
+    root->left->color = BLACK;
+    root->left->right->color = RED;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft5(rbNodePtr root){
+    root->color = BLACK;
+    root = rightRotateRb(root);
+    root->color = BLACK;
+    root->left->right = leftRotateRb(root->left->right);
+    root->left = rightRotateRb(root->left);
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft6(rbNodePtr root){
+    root->color = RED;
+    root = rightRotateRb(root);
+    root->left = rightRotateRb(root->left);
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupLeft7(rbNodePtr root){
+    root->color = BLACK;
+    root = rightRotateRb(root);
+    root->left->right = leftRotateRb(root->left->right);
+    root->left = rightRotateRb(root->left);
+    root->color = BLACK; 
+    return root;
+}
+
+int typeOfDeleteRootFixupRight(rbNodePtr root){
+    int violation = 0;
+    if(root){
+        if(root->color == DOUBLE_BLACK){
+            if(root->left && root->left->color == BLACK){
+                violation = 1;
+                if(root->left->right && root->left->right->color == RED) violation = 2;
+                else if(root->left->left && root->left->left->color == RED){
+                    violation = 3;
+                    printf("\nentro qua? \n\n");
+                } 
+            }else if(root->left && root->left->color == RED){
+                if(root->left->left && root->left->left->color == BLACK){
+                    if(root->left->right && root->left->right->color == BLACK){
+                        violation = 4;
+                        if((root->left->right->right && root->left->right->right->color == RED) && (!(root->left->right->left)))
+                            violation = 5;
+                        else if((root->left->right->left && root->left->right->left->color == RED) && (!(root->left->right->right)))
+                            violation = 6;
+                        else if((root->left->right->left && root->left->right->left->color == RED) && (root->left->right->right && root->left->right->right->color == RED))
+                            violation = 7;
+                    }
+                }
+            }
+        }
+    }
+    return violation;
+}
+
+rbNodePtr deleteRbRootFixupRight1(rbNodePtr root){
+    root->left->color == RED;
+    root->color == BLACK;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight2(rbNodePtr root){
+    root->left = rightRotateRb(root->left);
+    root->left->color = BLACK;
+    root->left->left->color = RED;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight3(rbNodePtr root){
+    root = leftRotateRb(root);
+    root->left->color = BLACK;
+    root->color = BLACK;
+    root->right->color = BLACK;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight4(rbNodePtr root){
+    root = leftRotateRb(root);
+    root->color = BLACK;
+    root->right->color = BLACK;
+    root->right->left->color = RED;
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight5(rbNodePtr root){
+    root->color = BLACK;
+    root = leftRotateRb(root);
+    root->color = BLACK;
+    root->right->left = rightRotateRb(root->right->left);
+    root->right = leftRotateRb(root->right);
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight6(rbNodePtr root){
+    root->color = RED;
+    root = leftRotateRb(root);
+    root->right = leftRotateRb(root->right);
+    return root;
+}
+
+rbNodePtr deleteRbRootFixupRight7(rbNodePtr root){
+    root->color = BLACK;
+    root = leftRotateRb(root);
+    root->right->left = rightRotateRb(root->right->left);
+    root->right = leftRotateRb(root->right); 
+    root->color = BLACK;
+    return root;
 }
 
 rbNodePtr minRb(rbTree tree){
@@ -371,7 +649,7 @@ rbNodePtr deleteRbNodeWithAddr_helper(rbNodePtr root, rbNodePtr key){
         else root = root->right;
         if(root){// at least one child
             if(tmp->color == RED || root->color == RED)//the child XOR parent are RED
-                root->color = RED;
+                root->color = BLACK;
             else// both child and parent are BLACK
                 root->color = DOUBLE_BLACK;
         }else{//no child
