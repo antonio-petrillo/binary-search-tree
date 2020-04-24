@@ -109,7 +109,6 @@ rbNodePtr deleteRbRootFixupLeft4(rbNodePtr root);
 rbNodePtr deleteRbRootFixupLeft5(rbNodePtr root);
 rbNodePtr deleteRbRootFixupLeft6(rbNodePtr root);
 rbNodePtr deleteRbRootFixupLeft7(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft8(rbNodePtr root);
 
 // delete fixup right (internal node)
 
@@ -129,7 +128,6 @@ rbNodePtr deleteRbRootFixupRight4(rbNodePtr root);
 rbNodePtr deleteRbRootFixupRight5(rbNodePtr root);
 rbNodePtr deleteRbRootFixupRight6(rbNodePtr root);
 rbNodePtr deleteRbRootFixupRight7(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight8(rbNodePtr root);
 
 // utility function
 
