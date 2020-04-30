@@ -3,22 +3,17 @@
 #include "rbtree.h"
 
 int main(int argc, char** argv){
-    rbTree tree = makeRbTree();
-    //for(int i=0; i<=atoi(argv[1]); i++) tree = insertRb(tree, i);
-    for(int i=atoi(argv[1]); i>=0; i--) tree = insertRb(tree, i);
-    //inOrderRbVisit(tree);
-    //
-    breadthRbVisit(tree);
-    for(int i=atoi(argv[1]); i>=0; i--){
-        printf("\nrimuovo %d\n", i);
-        tree = deleteRbNode(tree, i);
-        breadthRbVisit(tree);
-        //inOrderRbVisit(tree);
-        puts("\n");
-    } 
-    printf("\nstampa finale\n\n");
-    inOrderRbVisit(tree);
-
-    tree = dropRbTree(tree);
+    rbtree tree = make_rbtree();
+    for(int i=atoi(argv[1]); i>=0; i--) rbtree_insert(tree, i);
+    in_order_rbvisit(tree);
+    printf("delete test\n");
+    for(int i=atoi(argv[1]); i>=0; i--) {
+        printf("rimuovo %d\n\n", i);
+        rbtree_remove(tree, i);
+        //in_order_rbvisit(tree);
+        puts("");
+    }
+    in_order_rbvisit(tree);
+    tree = drop_rbtree(tree);
     return 0;
 }

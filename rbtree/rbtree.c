@@ -1,917 +1,602 @@
+ 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "rbtree.h"
 
-void rbError(char* message){
-    fprintf(stderr, "%s\n", message);
-    exit(1);
+rb_node grandparent(rb_node node){
+    assert(node != NULL);
+    assert(node->parent != NULL);
+    assert(node->parent->parent != NULL);
+    return node->parent->parent;
 }
 
-rbTree makeRbTree(){
+rb_node sibling(rb_node node){
+    assert(node != NULL);
+    assert(node->parent != NULL);
+    if(node == node->parent->left)
+        return node->parent->right;
+    else
+        return node->parent->left;
+}
+
+rb_node uncle(rb_node node){
+    assert(node != NULL);
+    assert(node->parent != NULL);
+    assert(node->parent->parent != NULL);
+    return sibling(node->parent);
+}
+
+color_t node_color(rb_node node){
+    return (node == NULL) ? BLACK : node->color;
+}
+
+int is_black(rb_node node){
+    return (node == NULL) ? 1 : node->color == BLACK;
+}
+
+int is_red(rb_node node){
+    return (node == NULL) ? 0 : node->color == RED;
+}
+
+int num_child(rb_node node){
+    int num = 0;
+    if(node->left != NULL) num++;
+    if(node->right != NULL) num++;
+    return num;
+}
+
+rbtree make_rbtree(){
+    rbtree tree = (rbtree) malloc(sizeof(struct rbtree_t));
+    assert(tree != NULL);
+    tree->root = NULL;
+    return tree;
+}
+
+rbtree drop_rbtree(rbtree tree){
+    tree->root = drop_rbtree_helper(tree->root);
+    free(tree);
+    tree = NULL;
+    assert(tree == NULL);
+    return tree;
+}
+
+
+rb_node drop_rbtree_helper(rb_node node){
+    if(node){
+        drop_rbtree_helper(node->left);
+        drop_rbtree_helper(node->right);
+        free(node);
+    }
     return NULL;
 }
 
-rbNodePtr makeRbNode(int value, rbNodePtr parent){
-    rbNodePtr newnode = (rbNodePtr) malloc(sizeof(rbNode));
-    if(!newnode) rbError("error in function makeRbNode");
-    newnode->left = newnode->right = NULL;
-    newnode->parent = parent;
+rb_node make_rbnode(int value, color_t color, rb_node left, rb_node right){
+    rb_node newnode = (rb_node) malloc(sizeof(struct rb_node_t));
+    assert(newnode != NULL);
+    newnode->left = left;
+    newnode->right = right;
     newnode->value = value;
-    newnode->color = RED;
+    newnode->parent = NULL;
+    newnode->color = color;
+    if(left != NULL) left->parent = newnode;
+    if(right != NULL) right->parent = newnode;
     return newnode;
 }
 
-rbNodePtr dropRbTree(rbTree tree){
-    if(tree){
-        tree->left = dropRbTree(tree->left);
-        tree->right = dropRbTree(tree->right);
-        free(tree);
-    }
-    return NULL;
-}
-
-void inOrderRbVisit(rbTree tree){
-    if(tree){
-        inOrderRbVisit(tree->left);
-        printf("node's value: %d, node's color: %s\n", tree->value, (tree->color == RED) ? "RED" : "BLACK");
-        inOrderRbVisit(tree->right);
-    }
-    return ;
-}
-
-void preOrderRbVisit(rbTree tree){
-  if(!tree) return;
-  printf("node's value: %d, node's color: %s\n", tree->value, (tree->color == RED) ? "RED" : "BLACK");
-  preOrderRbVisit(tree->left);
-  preOrderRbVisit(tree->right);
-  return;
-}
-
-void postOrderRbVisit(rbTree tree){
-  if(!tree) return;
-  postOrderRbVisit(tree->left);
-  postOrderRbVisit(tree->right);
-  printf("node's value: %d, node's color: %s\n", tree->value, (tree->color == RED) ? "RED" : "BLACK");
-  return;
-}
-
-void makeRbQueue(rbQueue* q){
-    q->head = q->tail = NULL;
-    return;
-}
-
-rbQueueNodePtr makeRbQueueNode(rbNodePtr value){
-    rbQueueNodePtr newnode = (rbQueueNodePtr) malloc(sizeof(rbQueueNode));
-    if(!newnode) rbError("error in function makeRbQueueNode");
-    newnode->value = value;
-    newnode->next = NULL;
-}
-
-void enqueue(rbQueue* q, rbNodePtr value){
-    if(!q->tail) q->head = q->tail = makeRbQueueNode(value);
-    else{
-        rbQueueNodePtr newnode = makeRbQueueNode(value);
-        q->tail->next = newnode;
-        q->tail = newnode;
-    }
-    return;
-}
-
-rbNodePtr dequeue(rbQueue* q){
-    rbNodePtr retNode = NULL;
-    if(q->head){
-        retNode = q->head->value;
-        rbQueueNodePtr tmp = q->head;
-        if(q->head == q->tail) q->head = q->tail = NULL;
-        else q->head = q->head->next;
-        tmp->value = NULL;
-        free(tmp);
-    }
-    return retNode;
-}
-
-void breadthRbVisit(rbTree tree){
-    rbQueue q;
-    makeRbQueue(&q);
-    if(tree) enqueue(&q, tree);
-    rbNodePtr iter = NULL;
-    while(q.head){
-        iter = dequeue(&q);
-        printf("node's value: %d, node's color: %s\n", iter->value, (iter->color == RED) ? "RED" : ((iter->color == DOUBLE_BLACK) ? "DOUBLE BLACK" : "BLACK"));
-        if(iter->left){
-            enqueue(&q, iter->left);
-            //printf("(%d) left's child -> (%d)\n", iter->value, iter->left->value);
-        } 
-        if(iter->right){
-            enqueue(&q, iter->right);
-            //printf("(%d) right's child -> (%d)\n", iter->value, iter->right->value);
-        }   
-     }
-    return;
-}
-
-rbTree insertRb(rbTree tree, int value){
-    tree = insertRb_helper(tree, value, NULL);
-    tree->color = BLACK;
-    return tree;
-}
-
-rbNodePtr insertRb_helper(rbNodePtr root, int value, rbNodePtr parent){
-    if(!root) root = makeRbNode(value, parent);
-    else if(root->value > value){
-        root->left = insertRb_helper(root->left, value, root);
-        root = insertRbFixupLeft(root);
-    }else/* if(root->value <= value)*/{
-        root->right = insertRb_helper(root->right, value, root);
-        root = insertRbFixupRight(root);
-    }
-    return root;
-}
-
-rbNodePtr insertRbFixupLeft(rbNodePtr root){
-    switch (typeOfInsertFixupLeft(root)){
-    case 1:
-        root = insertRbFixupLeft1(root);
-        break;
-    case 2:
-        root = insertRbFixupLeft2(root);
-        break;
-    case 3:
-        root = insertRbFixupLeft3(root);
-        break;
-    default:
-        break;
-    }
-    return root;
-}
-
-int typeOfInsertFixupLeft(rbNodePtr root){
-    int violation = 0;
-    if(root->right && root->right->color == RED){
-        if(root->left && root->left->color == RED){
-            if(root->left->left && root->left->left->color == RED) violation = 1;
-            if(root->left->right && root->left->right->color == RED) violation = 1;
-        }
-    }else{
-        if(root->left && root->left->color == RED){
-            if(root->left->right && root->left->right->color == RED) violation = 2;
-            else if(root->left->left && root->left->left->color == RED) violation = 3;
-        }
-    }
-    return violation;
-}
-
-rbNodePtr insertRbFixupLeft1(rbNodePtr root){
-    root->left->color = root->right->color = BLACK;
-    root->color = RED;
-    return root;
-}
-
-rbNodePtr insertRbFixupLeft2(rbNodePtr root){
-    root->left = rightRotateRb(root->left);
-    root = insertRbFixupLeft3(root);
-    return root;
-}
-
-rbNodePtr insertRbFixupLeft3(rbNodePtr root){
-    root = leftRotateRb(root);
-    root->right->color = RED;
-    root->color = BLACK;
-    return root;
-}
-
-rbNodePtr insertRbFixupRight(rbNodePtr root){
-    switch (typeOfInsertFixupRight(root)){
-    case 1:
-        root = insertRbFixupRight1(root);
-        break;
-    case 2:
-        root = insertRbFixupRight2(root);
-        break;
-    case 3:
-        root = insertRbFixupRight3(root);
-        break;
-    default:
-        break;
-    }
-    return root;
-}
-
-int typeOfInsertFixupRight(rbNodePtr root){
-        int violation = 0;
-    if(root->left && root->left->color == RED){
-        if(root->right && root->right->color == RED){
-            if(root->right->left && root->right->left->color == RED) violation = 1;
-            if(root->right->right && root->right->right->color == RED) violation = 1;
-        }
-    }else{
-        if(root->right && root->right->color == RED){
-            if(root->right->left && root->right->left->color == RED) violation = 2;
-            else if(root->right->left && root->right->right->color == RED) violation = 3;
-        }
-    }
-    return violation;
-}
-
-rbNodePtr insertRbFixupRight1(rbNodePtr root){
-    root->left->color = root->right->color = BLACK;
-    root->color = RED;
-    return root;
-}
-
-rbNodePtr insertRbFixupRight2(rbNodePtr root){
-    root->right = leftRotateRb(root->right);
-    root = insertRbFixupRight3(root);
-    return root;
-}
-
-rbNodePtr insertRbFixupRight3(rbNodePtr root){
-    root = rightRotateRb(root);
-    root->left->color = RED;
-    root->color = BLACK;
-    return root;
-}
-
-rbNodePtr leftRotateRb(rbNodePtr root){
-    rbNodePtr newroot = root;
-    if(root->left){
-        newroot = root->left;
-        newroot->parent = root->parent;
-        root->left = newroot->right;
-        if(root->left) root->left->parent = root;
-        newroot->right = root;
-        root->parent = newroot;
-    }
-    return newroot;
-}
-
-rbNodePtr rightRotateRb(rbNodePtr root){
-    rbNodePtr newroot = root;
-    if(root->right){
-        newroot = root->right;
-        newroot->parent = root->parent;
-        root->right = newroot->left;
-        if(root->right) root->right->parent = root;
-        newroot->left = root;
-        root->parent = newroot;
-    }
-    return newroot;
-}
-
-rbTree deleteRbNode(rbTree tree, int key){
-    int select = -1;
-    if(tree){
-        if(tree->value > key){
-            tree->left = deleteRbNode_helper(tree->left, key);
-            tree = deleteRbFixupLeft(tree);
-            select = 0;
-        }else if(tree->value < key){
-            tree->right = deleteRbNode_helper(tree->right, key);
-            tree = deleteRbFixupRight(tree);
-            select = 1;
+rb_node search_rb_node(rbtree tree, int value){
+    rb_node ret_node = tree->root;
+    while(ret_node != NULL){
+        if(ret_node->value > value){
+            ret_node = ret_node->left;
+        }else if(ret_node->value < value){
+            ret_node = ret_node->right;
         }else{
-            if(!(tree->left && tree->right)){ // one child or no child
-                rbNodePtr tmp = tree;
-                if(tree->left){
-                    tree = tree->left;
-                    select = 0;
-                } 
-                else {
-                    tree = tree->right;
-                    select = 1;
-                }
-                if(tree){// at least one child
-                    if(tmp->color == RED || tree->color == RED)//the child XOR parent are RED
-                        tree->color = BLACK;
-                    else// both child and parent are BLACK
-                        tree->color = DOUBLE_BLACK;
+            return ret_node;
+        }
+    }
+    return ret_node;
+}
+
+rb_node search_rb_node_from_node(rb_node node, int value){
+    rb_node ret_node = node;
+    while (ret_node != NULL){
+        if(ret_node->value > value){
+            ret_node = ret_node->left;
+        }
+        else if(ret_node->value < value){
+            ret_node = ret_node->right;
+        }
+        else{
+            return ret_node;
+        }
+    }
+    return ret_node;
+    
+}
+
+void rotate_left_rb(rbtree tree, rb_node node){
+    rb_node newroot = node->right;
+    replace_rb_node(tree, node, newroot);
+    node->right = newroot->left;
+    if(newroot->left){
+        newroot->left->parent = node;
+    }
+    newroot->left = node;
+    node->parent = newroot;
+    return;
+}
+
+void rotate_right_rb(rbtree tree, rb_node node){
+    rb_node newroot = node->left;
+    replace_rb_node(tree, node, newroot);
+    node->left = newroot->right;
+    if(newroot->right){
+        newroot->right->parent = node;
+    }
+    newroot->right = node;
+    node->parent = newroot;
+    return;
+}
+
+void replace_rb_node(rbtree tree, rb_node old_node, rb_node node){
+    if(old_node->parent == NULL){
+        tree->root = node;
+    }else{
+        if(old_node == old_node->parent->left){
+            old_node->parent->left = node;
+        }else{
+            old_node->parent->right = node;
+        }
+        
+    }
+    if(node != NULL){
+        node->parent = old_node->parent;
+    }
+    return;
+}
+
+void rbtree_insert(rbtree tree, int value){
+    rb_node newnode = make_rbnode(value, RED, NULL, NULL);
+    if(tree->root == NULL){
+        tree->root = newnode;
+    }else{
+        rb_node iter = tree->root;
+        while(1){
+            if(iter->value > value){
+                if(iter->left == NULL){
+                    iter->left = newnode;
+                    break;
                 }else{
-                    if(tmp->color == BLACK){
-                        if(tmp->parent)
-                            tmp->parent->color = DOUBLE_BLACK;
-                    }
+                    iter = iter->left;
                 }
-                free(tmp);
             }else{
-                rbNodePtr min = minRb(tree->right);
-                tree->value = min->value;
-                tree->right = deleteRbNode_helper(tree->right, min->value);
-                tree = deleteRbFixupRight(tree);
-                select = 1;
-            }
-        }
-    }
-    /* else 
-    *    node not present into the tree
-    *    return with no violation
-    */
-    if(select == 0){
-        tree = deleteRbRootFixupLeft(tree);
-    }else if(select == 1){
-        tree =  deleteRbRootFixupRight(tree);
-    }
-    if(tree) tree->color = BLACK;
-    return tree;
-}
-
-rbNodePtr deleteRbNode_helper(rbNodePtr root, int key){
-    if(root){
-        if(root->value > key){
-            root->left = deleteRbNode_helper(root->left, key);
-            root = deleteRbFixupLeft(root);
-        }else if(root->value < key){
-            root->right = deleteRbNode_helper(root->right, key);
-            root = deleteRbFixupRight(root);
-        }else{
-            if(!(root->left && root->right)){ // one child or no child
-                rbNodePtr tmp = root;
-                if(root->left)
-                    root = root->left;
-                else
-                    root = root->right;
-                if(root){// at least one child
-                    root->parent = tmp->parent;
-                    if(tmp->color == RED || root->color == RED)//the child XOR parent are RED
-                        root->color = BLACK;
-                    else// both child and parent are BLACK
-                        root->color = DOUBLE_BLACK;
-                }else{//no child
-                    if(tmp->color == BLACK){
-                        if(tmp->parent)
-                            tmp->parent->color = DOUBLE_BLACK;
-                    }/*
-                    * delete of a RED leaf, no violation in this case
-                    */
-                }
-                free(tmp);
-            }else{
-                rbNodePtr min = minRb(root->right);
-                root->value = min->value;
-                root->right = deleteRbNode_helper(root->right, min->value);
-                root = deleteRbFixupRight(root);
-            }
-        }
-    }
-    /* else 
-    *    node not present into the tree
-    *    return with no violation
-    */
-   return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft(rbNodePtr root){
-    switch (typeOfDeleteRootFixupLeft(root)){
-    case 1:
-        root = deleteRbRootFixupLeft1(root);
-        break;
-    case 2:
-        root = deleteRbRootFixupLeft2(root);
-        break;
-    case 3:
-        root = deleteRbRootFixupLeft3(root);
-        break;
-    case 4:
-        root = deleteRbRootFixupLeft4(root);
-        break;
-    case 5:
-        root = deleteRbRootFixupLeft5(root);
-        break;
-    case 6:
-        root = deleteRbRootFixupLeft6(root);
-        break;
-    case 7:
-        root = deleteRbRootFixupLeft7(root);
-        break;
-    default:
-        // 0 no vioaltion
-        break;
-    }
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight(rbNodePtr root){
-    switch (typeOfDeleteRootFixupRight(root)){
-    case 1:
-        root = deleteRbRootFixupRight1(root);
-        break;
-    case 2:
-        root = deleteRbRootFixupRight2(root);
-        break;
-    case 3:
-        root = deleteRbRootFixupRight3(root);
-        break;
-    case 4:
-        root = deleteRbRootFixupRight4(root);
-        break;
-    case 5:
-        root = deleteRbRootFixupRight5(root);
-        break;
-    case 6:
-        root = deleteRbRootFixupRight6(root);
-        break;
-    case 7:
-        root = deleteRbRootFixupRight7(root);
-        break;
-    default:
-        // 0 no vioaltion
-        break;
-    }
-    return root;
-}
-
-
-int typeOfDeleteRootFixupLeft(rbNodePtr root){
-    int violation = 0;
-    if(root){
-        if(root->color == DOUBLE_BLACK){
-            if(root->right && root->right->color == BLACK){
-                violation = 1;
-                if(root->right->left && root->right->left->color == RED) violation = 2;
-                else if(root->right->right && root->right->right->color == RED) violation = 3;
-            }else if(root->right && root->right->color == RED){
-                if(root->right->right && root->right->right->color == BLACK){
-                    if(root->right->left && root->right->left->color == BLACK){
-                        violation = 4;
-                        if((root->right->left->left && root->right->left->left->color == RED) && (!(root->right->left->right)))
-                            violation = 5;
-                        else if((root->right->left->right && root->right->left->right->color == RED) && (!(root->right->left->left)))
-                            violation = 6;
-                        else if((root->right->left->left && root->right->left->left->color == RED) && (root->right->left->right && root->right->left->right->color == RED))
-                            violation = 7;
-                    }
+                if(iter->right == NULL){
+                    iter->right = newnode;
+                    break;
+                }else{
+                    iter = iter->right;
                 }
             }
-        }
+        }       
+        newnode->parent = iter;
     }
-    return violation;
+    rb_insert_fixup(tree, newnode);
+    return;
 }
 
-rbNodePtr deleteRbRootFixupLeft1(rbNodePtr root){
-    root->right->color == RED;
-    root->color == BLACK;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft2(rbNodePtr root){
-    root->right = leftRotateRb(root->right);
-    root->right->color = BLACK;
-    root->right->right->color = RED;
-    root = deleteRbRootFixupLeft3(root);
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft3(rbNodePtr root){
-    root = rightRotateRb(root);
-    root->left->color = BLACK;
-    root->color = BLACK;
-    root->right->color = BLACK;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft4(rbNodePtr root){
-    root = rightRotateRb(root);
-    root->color = BLACK;
-    root->left->color = BLACK;
-    root->left->right->color = RED;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft5(rbNodePtr root){
-    root->color = BLACK;
-    root = rightRotateRb(root);
-    root->color = BLACK;
-    root->left->right = leftRotateRb(root->left->right);
-    root->left = rightRotateRb(root->left);
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft6(rbNodePtr root){
-    root->color = RED;
-    root = rightRotateRb(root);
-    root->left = rightRotateRb(root->left);
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupLeft7(rbNodePtr root){
-    root->color = BLACK;
-    root = rightRotateRb(root);
-    root->left->right = leftRotateRb(root->left->right);
-    root->left = rightRotateRb(root->left);
-    root->color = BLACK; 
-    return root;
-}
-
-int typeOfDeleteRootFixupRight(rbNodePtr root){
-    int violation = 0;
-    if(root){
-        if(root->color == DOUBLE_BLACK){
-            if(root->left && root->left->color == BLACK){
-                violation = 1;
-                if(root->left->right && root->left->right->color == RED) violation = 2;
-                else if(root->left->left && root->left->left->color == RED){
-                    violation = 3;
-                    printf("\nentro qua? \n\n");
-                } 
-            }else if(root->left && root->left->color == RED){
-                if(root->left->left && root->left->left->color == BLACK){
-                    if(root->left->right && root->left->right->color == BLACK){
-                        violation = 4;
-                        if((root->left->right->right && root->left->right->right->color == RED) && (!(root->left->right->left)))
-                            violation = 5;
-                        else if((root->left->right->left && root->left->right->left->color == RED) && (!(root->left->right->right)))
-                            violation = 6;
-                        else if((root->left->right->left && root->left->right->left->color == RED) && (root->left->right->right && root->left->right->right->color == RED))
-                            violation = 7;
-                    }
+void rb_insert_fixup(rbtree tree, rb_node node){
+    rb_node tmp = NULL;
+    while(is_red(node->parent)){
+        if(node->parent == node->parent->parent->left){//left violation
+            tmp = uncle(node);
+            if(is_red(tmp)){// uncle red
+                node->parent->color = BLACK;
+                tmp->color = BLACK;
+                grandparent(node)->color = RED;
+                node = grandparent(node);
+            }
+            else{ //uncle black
+                if(node == node->parent->right){
+                    node = node->parent;
+                    rotate_left_rb(tree, node);
                 }
+                node->parent->color = BLACK;
+                grandparent(node)->color = RED;
+                rotate_right_rb(tree, grandparent(node));
+            }
+        }
+        else{//right violation
+            tmp = uncle(node);
+            if(is_red(tmp)){//uncle red
+                node->parent->color = BLACK;
+                tmp->color = BLACK;
+                grandparent(node)->color = RED;
+                node = grandparent(node);
+            }
+            else{// uncle black
+                if(node == node->parent->left){
+                    node = node->parent;
+                    rotate_right_rb(tree, node);
+                }
+                node->parent->color = BLACK;
+                grandparent(node)->color = RED;
+                rotate_left_rb(tree, grandparent(node));
             }
         }
     }
-    return violation;
+    tree->root->color = BLACK;
+    return;
 }
 
-rbNodePtr deleteRbRootFixupRight1(rbNodePtr root){
-    root->left->color == RED;
-    root->color == BLACK;
-    return root;
+void in_order_rbvisit(rbtree tree){
+    in_order_rbvisit_helper(tree->root);
+    return;
 }
 
-rbNodePtr deleteRbRootFixupRight2(rbNodePtr root){
-    root->left = rightRotateRb(root->left);
-    root->left->color = BLACK;
-    root->left->left->color = RED;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight3(rbNodePtr root){
-    root = leftRotateRb(root);
-    root->left->color = BLACK;
-    root->color = BLACK;
-    root->right->color = BLACK;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight4(rbNodePtr root){
-    root = leftRotateRb(root);
-    root->color = BLACK;
-    root->right->color = BLACK;
-    root->right->left->color = RED;
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight5(rbNodePtr root){
-    root->color = BLACK;
-    root = leftRotateRb(root);
-    root->color = BLACK;
-    root->right->left = rightRotateRb(root->right->left);
-    root->right = leftRotateRb(root->right);
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight6(rbNodePtr root){
-    root->color = RED;
-    root = leftRotateRb(root);
-    root->right = leftRotateRb(root->right);
-    return root;
-}
-
-rbNodePtr deleteRbRootFixupRight7(rbNodePtr root){
-    root->color = BLACK;
-    root = leftRotateRb(root);
-    root->right->left = rightRotateRb(root->right->left);
-    root->right = leftRotateRb(root->right); 
-    root->color = BLACK;
-    return root;
-}
-
-rbNodePtr minRb(rbTree tree){
-    if(tree){
-        if(tree->left) return minRb(tree->left);
-        else return tree;
-    }
-    return NULL;
-}
-
-rbNodePtr maxRb(rbTree tree){
-    if(tree){
-        if(tree->right) return maxRb(tree->right);
-        else return tree;
-    }
-    return NULL;
-}
-
-rbNodePtr deleteRbFixupLeft(rbNodePtr root){
-    switch (typeOfDeleteFixupLeft(root)){
-    case 1:
-        root = deleteRbFixupLeft1(root);
-        break;
-    case 2:
-        root = deleteRbFixupLeft2(root);
-        break;
-    case 3:
-        root = deleteRbFixupLeft3(root);
-        break;
-    case 4:
-        root = deleteRbFixupLeft4(root);
-        break;
-    default:
-        //no violation
-        break;
-    }
-    return root;
-}
-
-rbNodePtr deleteRbFixupRight(rbNodePtr root){
-    switch (typeOfDeleteFixupLeft(root)){
-    case 1:
-        root = deleteRbFixupRight1(root);
-        break;
-    case 2:
-        root = deleteRbFixupRight2(root);
-        break;
-    case 3:
-        root = deleteRbFixupRight3(root);
-        break;
-    case 4:
-        root = deleteRbFixupRight4(root);
-        break;
-    default:
-        //no violation
-        break;
-    }
-    return root;
-}
-
-rbNodePtr deleteRbNodeWithAddr_helper(rbNodePtr root, rbNodePtr key){
-    if(root == key){//this node cannot have 2 children
-        rbNodePtr tmp = root;
-        if(root->left) root = root->left;
-        else root = root->right;
-        if(root){// at least one child
-            if(tmp->color == RED || root->color == RED)//the child XOR parent are RED
-                root->color = BLACK;
-            else// both child and parent are BLACK
-                root->color = DOUBLE_BLACK;
-        }else{//no child
-            if(tmp->color == BLACK){
-                if(tmp->parent)
-                    tmp->parent->color = DOUBLE_BLACK;
-            }/*
-            * delete of a RED leaf, no violation in this case
-            */
+void in_order_rbvisit_helper(rb_node node){
+    if(node){
+        in_order_rbvisit_helper(node->left);
+        printf("node's value: %d , node's color: %s", node->value, color_to_string(node));
+        if(node->left){
+            printf(", left child: %d", node->left->value);
         }
-        free(tmp);
-    }else if(root->value > key->value){
-        root->left = deleteRbNodeWithAddr_helper(root->left, key);
-        root = deleteRbFixupLeft(root);
-    }else{//root->value <= key->value && root != key
-        root->right = deleteRbNodeWithAddr_helper(root->right, key);
-        root = deleteRbFixupRight(root);
+        if(node->right){
+            printf(", right child: %d", node->right->value);
+        }
+        if(node->parent){
+            printf(", node's parent: %d \n", node->parent->value);
+        }
+        else{
+            printf(", this is the root \n");
+        }
+        in_order_rbvisit_helper(node->right);
     }
-    return root;
+    return;
 }
 
-int typeOfDeleteFixupLeft(rbNodePtr root){
-    int violation = 0;
-    if(root->left && root->left->color == DOUBLE_BLACK){
-        if(root->right && root->right->color == BLACK){
-            if(root->right->right && root->right->right->color == RED) violation = 1;
-            else if(((root->right->right && root->right->right->color == BLACK) || !(root->right->right)) && (root->right->left && root->right->left->color == RED)) violation = 2;
-            else{
-                if(((root->right->right && root->right->right->color == BLACK) || !(root->right->right)) && ((root->right->left && root->right->left->color == BLACK) || !(root->right->left)))
-                    violation = 3;
-            }
-        }else if(root->right && root->right->color == RED) violation = 4;
+void post_order_rbvisit(rbtree tree){
+    post_order_rbvisit_helper(tree->root);
+    return;
+}
+
+void post_order_rbvisit_helper(rb_node node){
+    if(node){
+        post_order_rbvisit_helper(node->left);
+        post_order_rbvisit_helper(node->right);
+        if(node->left){
+            printf(", left child: %d", node->left->value);
+        }
+        if(node->right){
+            printf(", right child: %d", node->right->value);
+        }
+        if(node->parent){
+            printf(", node's parent: %d \n", node->parent->value);
+        }
+        else{
+            printf(", this is the root \n");
+        }
     }
-    return violation;
+    return;
 }
 
-int typeOfDeleteFixupRight(rbNodePtr root){
-    int violation = 0;
-    if(root->right && root->right->color == DOUBLE_BLACK){
-        if(root->left && root->left->color == BLACK){
-            if(root->left->left && root->left->left->color == RED) violation = 1;
-            else if(((root->left->left && root->left->left->color == BLACK) || !(root->left->left)) && (root->left->right && root->left->right->color == RED)) violation = 2;
-            else{
-                if(((root->left->left && root->left->left->color == BLACK) || !(root->left->left)) && ((root->left->right && root->left->right->color == BLACK) || !(root->left->right)))
-                    violation = 3;
-            }
-        }else if(root->left && root->left->color == RED) violation = 4;
+void pre_order_rbvisit(rbtree tree){
+    pre_order_rbvisit_helper(tree->root);
+    return;
+}
+
+void pre_order_rbvisit_helper(rb_node node){
+    if(node){
+        if(node->left){
+            printf(", left child: %d", node->left->value);
+        }
+        if(node->right){
+            printf(", right child: %d", node->right->value);
+        }
+        if(node->parent){
+            printf(", node's parent: %d \n", node->parent->value);
+        }
+        else{
+            printf(", this is the root \n");
+        }
+        pre_order_rbvisit_helper(node->left);
+        pre_order_rbvisit_helper(node->right);
     }
-    return violation;
+    return;
 }
 
-rbNodePtr deleteRbFixupLeft1(rbNodePtr root){
-    root->right->color = root->color;
-    root->color = BLACK;
-    root->left->color = BLACK;//delete the double black
-    root->right->right->color = BLACK;
-    root = rightRotateRb(root);
-    return root;
+
+void rbtree_remove(rbtree tree, int key){
+    rb_node del_node = search_rb_node(tree, key);
+    rb_node child = NULL;
+    if(del_node == NULL) return; // key not present into the tree
+    if(num_child(del_node) == 2){
+        rb_node predecessor = min_rb_from_node(del_node);
+        del_node->value = predecessor->value;
+        del_node = predecessor;
+    }
+    assert(del_node->left == NULL || del_node->right == NULL);
+    child = (del_node->right == NULL) ? del_node->left : del_node->right;
+    if(is_black(del_node)){
+        del_node->color = node_color(child);
+        delete_case1(tree, del_node);
+    }
+    replace_rb_node(tree, del_node, child);
+    if(del_node->parent == NULL && child != NULL)
+        child->color = BLACK;
+    free(del_node);
+    return;
 }
 
-rbNodePtr deleteRbFixupLeft2(rbNodePtr root){
-    root->right->color = RED;
-    root->right->left->color = BLACK;
-    root->right = leftRotateRb(root->right);
-    root = deleteRbFixupLeft1(root);
-    return root;
+void rbtree_remove_with_addr(rbtree tree, rb_node key){
+    rb_node del_node = key;
+    rb_node child = NULL;
+    if(del_node == NULL) return; // key not present into the tree
+    if(num_child(del_node) == 2){
+        rb_node predecessor = min_rb_from_node(del_node);
+        del_node->value = predecessor->value;
+        del_node = predecessor;
+    }
+    assert(del_node->left == NULL || del_node->right == NULL);
+    child = (del_node->right == NULL) ? del_node->left : del_node->right;
+    if(is_black(del_node)){
+        del_node->color = node_color(child);
+        delete_case1(tree, del_node);
+    }
+    replace_rb_node(tree, del_node, child);
+    if(del_node->parent == NULL && child != NULL)
+        child->color = BLACK;
+    free(del_node);
+    return;
 }
 
-rbNodePtr deleteRbFixupLeft3(rbNodePtr root){
-    root->right->color = RED;
-    root->color = DOUBLE_BLACK;
-    return root;
+rb_node min_rb(rbtree tree){
+    rb_node ret_node = tree->root;
+    while(ret_node != NULL && ret_node->left != NULL) 
+        ret_node = ret_node->left;
+    return ret_node;
 }
 
-rbNodePtr deleteRbFixupLeft4(rbNodePtr root){
-    root->color = RED;
-    root->right->color = BLACK;
-    root = rightRotateRb(root);
-    root->left = deleteRbFixupLeft(root->left);
-    return root;
+rb_node max_rb(rbtree tree){
+    rb_node ret_node = tree->root;
+    while(ret_node != NULL && ret_node->right != NULL)
+        ret_node = ret_node->right;
+    return ret_node;
 }
 
-rbNodePtr deleteRbFixupRight1(rbNodePtr root){
-    root->left->color = root->color;
-    root->color = BLACK;
-    root->left->left->color = BLACK;
-    root->right->color = BLACK;
-    root = leftRotateRb(root);
-    return root;
+rb_node min_rb_from_node(rb_node node){
+    if(node && node->left == NULL) return node;
+    return min_rb_from_node(node->left);
 }
 
-rbNodePtr deleteRbFixupRight2(rbNodePtr root){
-    root->left->right->color = BLACK;
-    root->left->color = RED;
-    root->left = rightRotateRb(root->left);
-    root = deleteRbFixupRight1(root);
-    return root;
+rb_node max_rb_from_node(rb_node node){
+    if(node && node->right == NULL) return node;
+    return max_rb_from_node(node->right);
 }
 
-rbNodePtr deleteRbFixupRight3(rbNodePtr root){
-    root->right->color = RED;
-    root->left->color = BLACK;
-    root->color = DOUBLE_BLACK;
-    return root;
+void delete_case1(rbtree tree, rb_node node){
+    if(node->parent != NULL){
+        delete_case2(tree, node);
+    }
+    return;
 }
 
-rbNodePtr deleteRbFixupRight4(rbNodePtr root){
-    root->color = RED;
-    root->left->color = BLACK;
-    root = leftRotateRb(root);
-    root->right = deleteRbFixupRight(root->right);
-    return root;
+void delete_case2(rbtree tree, rb_node node){
+    if(is_red(sibling(node))){
+        node->parent->color = RED;
+        sibling(node)->color = BLACK;
+        if(node == node->parent->left){
+            rotate_left_rb(tree, node->parent);
+        }
+        else{
+            rotate_right_rb(tree, node->parent);
+        }
+    }
+    delete_case3(tree, node);
+    return;
 }
 
-int countRbTree(rbTree root){
-    if(root) return countRbTree(root->left) + countRbTree(root->right) + 1;
-    return 0;
+void delete_case3(rbtree tree, rb_node node){
+    if(is_black(node->parent) && is_black(sibling(node)) && is_black(sibling(node)->left) && is_black(sibling(node)->right)){
+        sibling(node)->color = RED;
+        delete_case1(tree, node->parent);
+    }else{
+        delete_case4(tree, node);
+    }
+    return;
 }
 
-int isEmptyRbTree(rbTree root){
-  return root == NULL;
-}
-
-rbNodePtr searchRbTree(rbTree root, int value){
-    if(!root) return NULL;
+void delete_case4(rbtree tree, rb_node node){
+    if(is_red(node->parent) && is_black(sibling(node)) && is_black(sibling(node)->left) && is_black(sibling(node)->right)){
+        sibling(node)->color = RED;
+        node->parent->color = BLACK;
+    } 
     else{
-      if(root->value > value) return searchRbTree(root->left, value);
-      else if(root->value < value) return searchRbTree(root->right, value);
-      else return root;
+        delete_case5(tree, node);
     }
+    return;
 }
 
-rbTree unionRbTree(rbTree tree1, rbTree tree2){
-  rbTree ret = makeRbTree();
-  unionRbTree_rc(tree1, tree2, &ret);
-  return ret;
+void delete_case5(rbtree tree, rb_node node){
+    if(node == node->parent->left && is_black(sibling(node)) && is_red(sibling(node)->left) && is_black(sibling(node)->right)){
+        sibling(node)->color = RED;
+        sibling(node)->left->color = BLACK;
+        rotate_right_rb(tree, node);
+    }
+    else if(node == node->parent->right && is_black(sibling(node)) && is_red(sibling(node)->right) && is_black(sibling(node)->left)){
+        sibling(node)->color = RED;
+        sibling(node)->right->color = BLACK;
+        rotate_left_rb(tree, node);
+    }
+    delete_case6(tree, node);
+    return;
 }
 
-rbTree intersectRbTree(rbTree tree1, rbTree tree2){
-  rbTree ret = makeRbTree();
-  if(tree1) intersectRbTree_rc(tree1, tree2, &ret);
-  return ret;
+void delete_case6(rbtree tree, rb_node node){
+    sibling(node)->color = node_color(node->parent);
+    node->parent->color = BLACK;
+    if(node == node->parent->left){
+        assert(is_red(sibling(node)->right));
+        sibling(node)->right->color = BLACK;
+        rotate_left_rb(tree, node->parent);
+    }
+    else{
+        assert(is_red(sibling(node)->left));
+        sibling(node)->left->color = BLACK;
+        rotate_right_rb(tree, node->parent);
+    }
+    return;
 }
 
-rbTree differenceRbTree(rbTree tree1, rbTree tree2){
-  rbTree ret = makeRbTree();
-  if(tree1) {
-	ret = copyRbTree(tree1);
-	removeDuplicatesRbTree(&ret);
-	differenceRbTree_rc(tree2, &ret);
-  }
-  return ret;
+int count_rb_node(rbtree tree){
+    return count_rb_node_helper(tree->root);
 }
 
-void unionRbTree_rc(rbTree tree1, rbTree tree2, rbTree* tree3){
+int count_rb_node_helper(rb_node node){
+    if(!node) return 0;
+    return count_rb_node_helper(node->left) + count_rb_node_helper(node->right) + 1;
+}
+
+int is_empty_rb(rbtree tree){
+    return tree->root == NULL;
+}
+
+rbtree union_rbtree(rbtree tree1, rbtree tree2){
+    rbtree ret_tree = make_rbtree();
+    union_rbtree_helper(tree1->root, tree2->root, ret_tree);
+    return ret_tree;
+}
+
+void union_rbtree_helper(rb_node tree1, rb_node tree2, rbtree tree3){
     if(!tree1 && !tree2){
       //do nothing
     }else if(tree1 && !tree2){
-      if(!searchRbTree(*tree3, tree1->value)) *tree3 = insertRb(*tree3, tree1->value);
-      unionRbTree_rc(tree1->left, tree2, tree3);
-      unionRbTree_rc(tree1->right, tree2, tree3);
+      if(!search_rb_node(tree3, tree1->value)) rbtree_insert(tree3, tree1->value);
+      union_rbtree_helper(tree1->left, tree2, tree3);
+      union_rbtree_helper(tree1->right, tree2, tree3);
     }else if(!tree1 && tree2){
-      if(!searchRbTree(*tree3, tree2->value)) *tree3 = insertRb(*tree3, tree2->value);
-      unionRbTree_rc(tree1, tree2->left, tree3);
-      unionRbTree_rc(tree1, tree2->right, tree3);
+      if(!search_rb_node(tree3, tree2->value)) rbtree_insert(tree3, tree2->value);
+      union_rbtree_helper(tree1, tree2->left, tree3);
+      union_rbtree_helper(tree1, tree2->right, tree3);
     }else{
-      if(!searchRbTree(*tree3, tree1->value)) *tree3 = insertRb(*tree3, tree1->value);
-      if(!searchRbTree(*tree3, tree2->value)) *tree3 = insertRb(*tree3, tree2->value);
-      unionRbTree_rc(tree1->left, tree2, tree3);
-      unionRbTree_rc(tree1->right, tree2, tree3);
-      unionRbTree_rc(tree1, tree2->left, tree3);
-      unionRbTree_rc(tree1, tree2->right, tree3);
+      if(!search_rb_node(tree3, tree1->value)) rbtree_insert(tree3, tree1->value);
+      if(!search_rb_node(tree3, tree2->value)) rbtree_insert(tree3, tree2->value);
+      union_rbtree_helper(tree1->left, tree2, tree3);
+      union_rbtree_helper(tree1->right, tree2, tree3);
+      union_rbtree_helper(tree1, tree2->left, tree3);
+      union_rbtree_helper(tree1, tree2->right, tree3);
     }
     return;
 }
 
-void intersectRbTree_rc(rbTree tree1, rbTree tree2, rbTree* tree3){
+rbtree intersect_rbtree(rbtree tree1, rbtree tree2){
+    rbtree ret_tree = make_rbtree();
+    if(!is_empty_rb(tree1))intersect_rbtree_helper(tree1->root, tree2->root, ret_tree);
+    return ret_tree;
+}
+
+void intersect_rbtree_helper(rb_node tree1, rb_node tree2, rbtree tree3){
     if(tree2){
-      if(searchRbTree(tree1, tree2->value))
-        if(!searchRbTree(*tree3, tree2->value))
-          *tree3 = insertRb(*tree3, tree2->value);
-      intersectRbTree_rc(tree1, tree2->left, tree3);
-      intersectRbTree_rc(tree1, tree2->right, tree3);
+      if(search_rb_node_from_node(tree1, tree2->value))
+        if(!search_rb_node(tree3, tree2->value))
+          rbtree_insert(tree3, tree2->value);
+      intersect_rbtree_helper(tree1, tree2->left, tree3);
+      intersect_rbtree_helper(tree1, tree2->right, tree3);
     }
     return;
 }
 
-void differenceRbTree_rc(rbTree tree2, rbTree* tree3){
-  if(tree2){
-    if(searchRbTree(*tree3, tree2->value))
-      *tree3 = deleteRbNode(*tree3, tree2->value);
-    differenceRbTree_rc(tree2->left, tree3);
-    differenceRbTree_rc(tree2->right, tree3);
-  }
-  return;
+rbtree difference_rbtree(rbtree tree1, rbtree tree2){
+    rbtree ret_tree = make_rbtree();
+    ret_tree = copy_rbtree(tree1);
+    if(!is_empty_rb(tree2)) difference_rbtree_helper(tree2->root, ret_tree);
+    return ret_tree;
 }
 
-rbTree copyRbTree(rbTree tree){
-  rbTree copy = makeRbTree();
-  copyRbTree_rec(tree, &copy);
-  return copy;
-}
-
-void copyRbTree_rec(rbTree tree, rbTree* copy){
-  if(!tree) return;
-  *copy = insertRb(*copy, tree->value);
-  copyRbTree_rec(tree->left, copy);
-  copyRbTree_rec(tree->right, copy);
-  return;
-}
-
-void removeDuplicatesRbTree(rbTree* tree){
-  if(!(*tree)) return;
-  if(searchRbTree((*tree)->left, (*tree)->value)){
-    (*tree)->left = deleteRbNode((*tree)->left, (*tree)->value);
-  }if(searchRbTree((*tree)->right, (*tree)->value)){
-    (*tree)->right = deleteRbNode((*tree)->right, (*tree)->value);
-  }
-  removeDuplicatesRbTree(&(*tree)->left);
-  removeDuplicatesRbTree(&(*tree)->right);
-  return;
-}
-
-rbNodePtr successorRbTree(rbTree tree, int value){
-    rbNodePtr ret = NULL;
-    successorRbTree_rec(tree, value, &ret);
-    return ret;
-}
-
-// ogni volta che scendo a sinistra devo salvare il nodo
-void successorRbTree_rec(rbTree root, int value, rbNodePtr* candidate){
-  if(root){
-    if(root->value > value){
-      *candidate = root;
-      successorRbTree_rec(root->left, value, candidate);
-    }else if(root->value < value){
-      successorRbTree_rec(root->right, value, candidate);
-    }else{
-      rbNodePtr tmp = minRb(root->right);
-      *candidate = (tmp) ? tmp : (*candidate);
+void difference_rbtree_helper(rb_node tree2, rbtree tree3){
+    if(tree2){
+        if(search_rb_node(tree3, tree2->value)){
+            rbtree_remove(tree3, tree2->value);
+        }
+        difference_rbtree_helper(tree2->left, tree3);
+        difference_rbtree_helper(tree2->right, tree3);
     }
-  }
-  return;
+    return;
 }
 
-rbNodePtr predeccessorRbTree(rbTree tree, int value){
-  rbNodePtr ret = NULL;
-  predecessorRbTree_rec(tree, value, &ret);
-  return ret;
+rbtree copy_rbtree(rbtree src){
+    rbtree copy = make_rbtree();
+    copy_rbtree_helper(copy, src->root);
+    return copy;
 }
 
-void predecessorRbTree_rec(rbTree root, int value, rbNodePtr* candidate){
-  if(root){
-    if(root->value > value){
-      predecessorRbTree_rec(root->left, value, candidate);
-    }else if(root->value < value){
-      *candidate = root;
-      predecessorRbTree_rec(root->right, value, candidate);
-    }else{
-      rbNodePtr tmp = maxRb(root->left);
-      *candidate = (tmp) ? tmp : (*candidate);
+void copy_rbtree_helper(rbtree dest, rb_node node){
+    if(node){
+        rbtree_insert(dest, node->value);
+        copy_rbtree_helper(dest, node->left);
+        copy_rbtree_helper(dest, node->right);
     }
-  }
-  return;
+    return;
+}
+
+void remove_rb_duplicates(rbtree tree){
+    remove_rb_duplicates_helper(tree, tree->root);
+    return;
+}
+
+void remove_rb_duplicates_helper(rbtree tree, rb_node node){
+    if(node){
+        rb_node tmp = NULL;
+        if(tmp = search_rb_node_from_node(node->left, node->value), tmp){
+            rbtree_remove_with_addr(tree, tmp);
+        }
+        if(tmp = search_rb_node_from_node(node->right, node->value), tmp){
+            rbtree_remove_with_addr(tree, tmp);
+        }
+        remove_rb_duplicates_helper(tree, node->left);
+        remove_rb_duplicates_helper(tree, node->right);
+    }
+    return;
+}
+
+rb_node rb_successor(rbtree tree, int key){
+    rb_node ret_node = NULL;
+    if(!is_empty_rb(tree)) rb_successor_helper(tree->root, key, &ret_node);
+    return ret_node;
+}
+
+void rb_successor_helper(rb_node node, int key, rb_node* candidate){
+    if(node){
+        if(node->value > key){
+            *candidate = node;
+            rb_successor_helper(node->left, key, candidate);
+        }else if(node->value < key){
+            rb_successor_helper(node->right, key, candidate);
+        }else{
+            rb_node tmp = min_rb_from_node(node->right);
+            *candidate = (tmp != NULL) ? tmp : (*candidate);
+        }
+    }
+    return;
+}
+
+rb_node rb_predecessor(rbtree tree, int key){
+    rb_node ret_node = NULL;
+    if(!is_empty_rb(tree)) rb_predecessor_helper(tree->root, key, &ret_node);
+    return ret_node;
+}
+
+void rb_predecessor_helper(rb_node node, int key, rb_node* candidate){
+        if(node){
+        if(node->value > key){
+            rb_predecessor_helper(node->left, key, candidate);
+        }else if(node->value < key){
+            *candidate = node;
+            rb_predecessor_helper(node->right, key, candidate);
+        }else{
+            rb_node tmp = max_rb_from_node(node->left);
+            *candidate = (tmp != NULL) ? tmp : (*candidate);
+        }
+    }
+    return;
 }

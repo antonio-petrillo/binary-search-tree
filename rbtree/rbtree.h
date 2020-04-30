@@ -1,156 +1,82 @@
+ 
 #ifndef RBTREE_H
-#define RBTREE_H 1
+#define RBTREE_H
 
-typedef enum{RED, BLACK, DOUBLE_BLACK} Color;
+typedef enum{RED, BLACK} color_t;
 
-typedef struct rb_node{
-    struct rb_node* parent;
-    struct rb_node* left;
-    struct rb_node* right;
+#define color_to_string(node) (node == NULL)? "BLACK" : ((node->color == BLACK) ? "BLACK" : "RED")
+
+typedef struct rb_node_t{
+    struct rb_node_t* left;
+    struct rb_node_t* right;
+    struct rb_node_t* parent;
+    color_t color;
     int value;
-    Color color;
-}rbNode;
+} *rb_node;
 
-typedef rbNode* rbNodePtr;
-typedef rbNodePtr rbTree;
+typedef struct rbtree_t{
+    rb_node root;
+}* rbtree;
 
-typedef struct rb_queue_node{
-    struct rb_queue_node* next;
-    rbNodePtr value;
-}rbQueueNode;
+rb_node grandparent(rb_node node); // parent parent
+rb_node sibling(rb_node node);     // other parent's child
+rb_node uncle(rb_node node);       // sibling of its parent
+color_t node_color(rb_node node);
+int is_black(rb_node node);
+int is_red(rb_node node);
+int num_child(rb_node node);
+rbtree make_rbtree();
+rbtree drop_rbtree(rbtree tree);
+rb_node drop_rbtree_helper(rb_node node);
+rb_node make_rbnode(int value, color_t color, rb_node left, rb_node right);
+rb_node search_rb_node(rbtree tree, int value);
+rb_node search_rb_node_from_node(rb_node node, int value);
 
-typedef rbQueueNode* rbQueueNodePtr;
+void in_order_rbvisit(rbtree tree);
+void in_order_rbvisit_helper(rb_node node);
+void post_order_rbvisit(rbtree tree);
+void post_order_rbvisit_helper(rb_node node);
+void pre_order_rbvisit(rbtree tree);
+void pre_order_rbvisit_helper(rb_node node);
 
-typedef struct{
-    rbQueueNodePtr head;
-    rbQueueNodePtr tail;
-}rbQueue;
+void rotate_left_rb(rbtree tree, rb_node node);
+void rotate_right_rb(rbtree tree, rb_node node);
+void replace_rb_node(rbtree tree, rb_node old_node, rb_node node);
 
-// create tree function
+void rbtree_insert(rbtree tree, int value);
+void rb_insert_fixup(rbtree tree, rb_node node);
 
-void rbError(char* message);
-rbTree makeRbTree();
-rbNodePtr makeRbNode(int value, rbNodePtr parent);
-rbNodePtr dropRbTree(rbTree tree);
-
-// queue rb node function for breadth visit
-
-void makeRbQueue(rbQueue* q);
-rbQueueNodePtr makeRbQueueNode(rbNodePtr value);
-void enqueue(rbQueue* q, rbNodePtr value);
-rbNodePtr dequeue(rbQueue* q);
-
-// visit (print) function
-
-void inOrderRbVisit(rbTree tree);
-void preOrderRbVisit(rbTree tree);
-void postOrderRbVisit(rbTree tree);
-void breadthRbVisit(rbTree tree);
-
-// rotate function
-
-rbNodePtr leftRotateRb(rbNodePtr root);
-rbNodePtr rightRotateRb(rbNodePtr root);
-
-// inert node function
-
-rbTree insertRb(rbTree tree, int value);
-rbNodePtr insertRb_helper(rbNodePtr root, int value, rbNodePtr parent);
-rbNodePtr insertRbFixupLeft(rbNodePtr root);
-
-// insert fixup left
-
-int typeOfInsertFixupLeft(rbNodePtr root);
-rbNodePtr insertRbFixupLeft1(rbNodePtr root);
-rbNodePtr insertRbFixupLeft2(rbNodePtr root);
-rbNodePtr insertRbFixupLeft3(rbNodePtr root);
-rbNodePtr insertRbFixupRight(rbNodePtr root);
-
-// insert fixup right 
-
-int typeOfInsertFixupRight(rbNodePtr root);
-rbNodePtr insertRbFixupRight1(rbNodePtr root);
-rbNodePtr insertRbFixupRight2(rbNodePtr root);
-rbNodePtr insertRbFixupRight3(rbNodePtr root);
-
-// delete node function
-
-rbTree deleteRbNode(rbTree tree, int key);
-rbNodePtr deleteRbNode_helper(rbNodePtr root, int key);
-
-// delete fixup (internal node)
-
-rbNodePtr deleteRbFixupLeft(rbNodePtr root);
-rbNodePtr deleteRbFixupRight(rbNodePtr root);
-
-//delete fixup (root)
-
-rbNodePtr deleteRbRootFixupLeft(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight(rbNodePtr root);
+rb_node min_rb(rbtree tree);
+rb_node max_rb(rbtree tree);
+rb_node min_rb_from_node(rb_node node);
+rb_node max_rb_from_node(rb_node node);
 
 
-rbNodePtr deleteRbNodeWithAddr_helper(rbNodePtr root, rbNodePtr key);
+void rbtree_remove(rbtree tree, int key);
+void rbtree_remove_with_addr(rbtree tree, rb_node key);
+void delete_case1(rbtree tree, rb_node node);
+void delete_case2(rbtree tree, rb_node node);
+void delete_case3(rbtree tree, rb_node node);
+void delete_case4(rbtree tree, rb_node node);
+void delete_case5(rbtree tree, rb_node node);
+void delete_case6(rbtree tree, rb_node node);
 
-// delete fixup left (internal node)
-
-int typeOfDeleteFixupLeft(rbNodePtr root);
-rbNodePtr deleteRbFixupLeft1(rbNodePtr root);
-rbNodePtr deleteRbFixupLeft2(rbNodePtr root);
-rbNodePtr deleteRbFixupLeft3(rbNodePtr root);
-rbNodePtr deleteRbFixupLeft4(rbNodePtr root);
-
-// delete fixup left (root)
-
-int typeOfDeleteRootFixupLeft(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft1(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft2(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft3(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft4(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft5(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft6(rbNodePtr root);
-rbNodePtr deleteRbRootFixupLeft7(rbNodePtr root);
-
-// delete fixup right (internal node)
-
-int typeOfDeleteFixupRight(rbNodePtr root);
-rbNodePtr deleteRbFixupRight1(rbNodePtr root);
-rbNodePtr deleteRbFixupRight2(rbNodePtr root);
-rbNodePtr deleteRbFixupRight3(rbNodePtr root);
-rbNodePtr deleteRbFixupRight4(rbNodePtr root);
-
-// delete fixup left (root)
-
-int typeOfDeleteRootFixupRight(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight1(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight2(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight3(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight4(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight5(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight6(rbNodePtr root);
-rbNodePtr deleteRbRootFixupRight7(rbNodePtr root);
-
-// utility function
-
-rbNodePtr minRb(rbTree tree);
-rbNodePtr maxRb(rbTree tree);
-
-int countRbTree(rbTree root);
-rbTree maxRbTree(rbTree root);
-rbTree minRbTree(rbTree root);
-int isEmptyRbTree(rbTree root);
-rbTree searchRbTree(rbTree root, int value);
-rbTree unionRbTree(rbTree tree1, rbTree tree2);
-rbTree intersectRbTree(rbTree tree1, rbTree tree2);
-rbTree differenceRbTree(rbTree tree1, rbTree tree2);
-void unionRbTree_rc(rbTree tree1, rbTree tree2, rbTree* tree3);
-void intersectRbTree_rc(rbTree tree1, rbTree tree2, rbTree* tree3);
-void differenceRbTree_rc(rbTree tree2, rbTree* tree3);
-rbTree copyRbTree(rbTree tree);
-void copyRbTree_rec(rbTree tree, rbTree* copy);
-void removeDuplicatesRbTree(rbTree* tree);
-rbNodePtr successorRbTree(rbTree tree, int value);
-void successorRbTree_rec(rbTree root, int value, rbTree* candidate);
-rbNodePtr predeccessorRbTree(rbTree tree, int value);
-void predecessorRbTree_rec(rbTree root, int value, rbTree* candidate);
+int count_rb_node(rbtree tree);
+int count_rb_node_helper(rb_node node);
+int is_empty_rb(rbtree tree);
+rbtree union_rbtree(rbtree tree1, rbtree tree2);
+void union_rbtree_helper(rb_node tree1, rb_node tree2, rbtree tree3);
+rbtree intersect_rbtree(rbtree tree1, rbtree tree2);
+void intersect_rbtree_helper(rb_node tree1, rb_node tree2, rbtree tree3);
+rbtree difference_rbtree(rbtree tree1, rbtree tree2);
+void difference_rbtree_helper(rb_node tree2, rbtree tree3);
+rbtree copy_rbtree(rbtree src);
+void copy_rbtree_helper(rbtree dest, rb_node node);
+void remove_rb_duplicates(rbtree tree);
+void remove_rb_duplicates_helper(rbtree tree, rb_node node);
+rb_node rb_successor(rbtree tree, int key);
+void rb_successor_helper(rb_node node, int key, rb_node* candidate);
+rb_node rb_predecessor(rbtree tree, int key);
+void rb_predecessor_helper(rb_node node, int key, rb_node* candidate);
 
 #endif
